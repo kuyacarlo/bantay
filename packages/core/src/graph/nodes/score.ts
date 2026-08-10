@@ -14,10 +14,50 @@ async function resolveLlmKey(providedSecrets?: Record<string, string>): Promise<
 }
 
 /**
+ * Offline / demo scoring: use scanner riskTier only (no LLM, no network).
+ * Highest finding tier wins. Used by `bantay scan --local` and FerretOps demos.
+ */
+export function scoreLocal(findings: any[]): {
+  tier: "low" | "medium" | "high";
+  reason: string;
+  suggestion: string;
+} {
+  if (!findings || findings.length === 0) {
+    return {
+      tier: "low",
+      reason: "No secrets detected in the diff.",
+      suggestion: "Safe to push.",
+    };
+  }
+
+  const tiers = findings.map((f) => f.riskTier || "high");
+  if (tiers.includes("high")) {
+    return {
+      tier: "high",
+      reason: `Local gate: ${findings.length} high-risk finding(s) (regex/secretlint).`,
+      suggestion:
+        "Remove secrets from the diff, or rotate via SecretCycle and keep values out of git.",
+    };
+  }
+  if (tiers.includes("medium")) {
+    return {
+      tier: "medium",
+      reason: `Local gate: ${findings.length} medium-risk finding(s).`,
+      suggestion: "Review before push. Full CIBA approval requires `bantay login`.",
+    };
+  }
+  return {
+    tier: "low",
+    reason: "Local gate: findings present but low tier.",
+    suggestion: "Safe to push under local policy.",
+  };
+}
+
+/**
  * Node that scores the total risk of the findings using an OpenAI-compatible LLM
  */
 export async function scoreRisk(state: any): Promise<any> {
-  const { findings, secrets } = state;
+  const { findings, secrets, local } = state;
 
   if (!findings || findings.length === 0) {
     return {
@@ -25,6 +65,10 @@ export async function scoreRisk(state: any): Promise<any> {
       reason: "No secrets detected in the diff.",
       suggestion: "Safe to push.",
     };
+  }
+
+  if (local || process.env.BANTAY_LOCAL === "1") {
+    return scoreLocal(findings);
   }
 
   const apiKey = await resolveLlmKey(secrets);

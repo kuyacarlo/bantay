@@ -5,6 +5,8 @@
 Pre-push git guardian that intercepts secrets before they leave your machine.
 Built for the Auth0 "Authorized to Act" Hackathon 2026.
 
+**FerretOps:** Bantay is the **Gate**; [SecretCycle](https://github.com/kuyacarlo/secretcycle) is the **Cycle**. Offline demo (synthetic secrets only): [DEMO.md](./DEMO.md) — or run `scripts/ferretops-demo.sh` from a SecretCycle checkout with `BANTAY_ROOT` pointing here. Use `bantay scan --local` when Auth0/LLM are unavailable.
+
 [![Main Frame](./assets/MainFrame.png)](https://youtu.be/5gfK5wFCnsE)
 
 ## What it does
@@ -141,9 +143,8 @@ packages/
 - In-editor scanning (VS Code extension)
 - PR-level scanning with bot comments
 
-***
+---
 
 Built for the **Auth0 "Authorized to Act" Hackathon 2026**
-
 
 _tara na, nandito na ang bantay..._

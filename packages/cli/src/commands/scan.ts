@@ -25,49 +25,61 @@ export async function scanCommand(
     prePush?: boolean;
     allFiles?: boolean;
     all?: boolean;
+    local?: boolean;
   } = {}
 ) {
-  const { ci, staged, prePush, allFiles, all } = options;
-  // 0. Login Check & Secrets Loading
+  const { ci, staged, prePush, allFiles, all, local } = options;
+  const localMode = Boolean(local) || process.env.BANTAY_LOCAL === "1";
+
+  // 0. Login Check & Secrets Loading (skipped in --local / BANTAY_LOCAL=1)
   let secrets: any = {};
-  try {
-    secrets = await loadSecrets();
-    if (!process.env.BANTAY_AUTH0_CLIENT_SECRET && !secrets.BANTAY_AUTH0_CLIENT_SECRET) {
-      throw new Error();
-    }
-    if (secrets.BANTAY_AUTH0_USER_ID && !process.env.BANTAY_AUTH0_USER_ID) {
-      process.env.BANTAY_AUTH0_USER_ID = secrets.BANTAY_AUTH0_USER_ID;
-    }
-    if (secrets.BANTAY_AUTH0_CLIENT_SECRET && !process.env.BANTAY_AUTH0_CLIENT_SECRET) {
-      process.env.BANTAY_AUTH0_CLIENT_SECRET = secrets.BANTAY_AUTH0_CLIENT_SECRET;
-    }
-    if (secrets.BANTAY_LLM_API_KEY) {
-      if (!process.env.VULTR_API_KEY) process.env.VULTR_API_KEY = secrets.BANTAY_LLM_API_KEY;
-      if (!process.env.BANTAY_LLM_API_KEY)
-        process.env.BANTAY_LLM_API_KEY = secrets.BANTAY_LLM_API_KEY;
-    }
-    if (secrets.BANTAY_AUTH0_CLIENT_ID && !process.env.BANTAY_AUTH0_CLIENT_ID) {
-      process.env.BANTAY_AUTH0_CLIENT_ID = secrets.BANTAY_AUTH0_CLIENT_ID;
-    }
-    if (secrets.BANTAY_AUTH0_DOMAIN && !process.env.BANTAY_AUTH0_DOMAIN) {
-      process.env.BANTAY_AUTH0_DOMAIN = secrets.BANTAY_AUTH0_DOMAIN;
-    }
-    if (secrets.BANTAY_LLM_BASE_URL && !process.env.BANTAY_LLM_BASE_URL) {
-      process.env.BANTAY_LLM_BASE_URL = secrets.BANTAY_LLM_BASE_URL;
-    }
-    if (secrets.BANTAY_LLM_MODEL && !process.env.BANTAY_LLM_MODEL) {
-      process.env.BANTAY_LLM_MODEL = secrets.BANTAY_LLM_MODEL;
-    }
-    if (secrets.BANTAY_NTFY_URL && !process.env.BANTAY_NTFY_URL) {
-      process.env.BANTAY_NTFY_URL = secrets.BANTAY_NTFY_URL;
-    }
-    if (secrets.BANTAY_NTFY_TOPIC && !process.env.BANTAY_NTFY_TOPIC) {
-      process.env.BANTAY_NTFY_TOPIC = secrets.BANTAY_NTFY_TOPIC;
-    }
-  } catch (e) {
-    if (!process.env.BANTAY_AUTH0_CLIENT_SECRET) {
-      console.error(chalk.red("❌ Not logged in. Run 'bantay login' first."));
-      process.exit(1);
+  if (localMode) {
+    console.log(
+      chalk.dim("🛡️  Bantay local mode: offline regex/secretlint gate (no Auth0/LLM/CIBA).")
+    );
+  } else {
+    try {
+      secrets = await loadSecrets();
+      if (!process.env.BANTAY_AUTH0_CLIENT_SECRET && !secrets.BANTAY_AUTH0_CLIENT_SECRET) {
+        throw new Error();
+      }
+      if (secrets.BANTAY_AUTH0_USER_ID && !process.env.BANTAY_AUTH0_USER_ID) {
+        process.env.BANTAY_AUTH0_USER_ID = secrets.BANTAY_AUTH0_USER_ID;
+      }
+      if (secrets.BANTAY_AUTH0_CLIENT_SECRET && !process.env.BANTAY_AUTH0_CLIENT_SECRET) {
+        process.env.BANTAY_AUTH0_CLIENT_SECRET = secrets.BANTAY_AUTH0_CLIENT_SECRET;
+      }
+      if (secrets.BANTAY_LLM_API_KEY) {
+        if (!process.env.VULTR_API_KEY) process.env.VULTR_API_KEY = secrets.BANTAY_LLM_API_KEY;
+        if (!process.env.BANTAY_LLM_API_KEY)
+          process.env.BANTAY_LLM_API_KEY = secrets.BANTAY_LLM_API_KEY;
+      }
+      if (secrets.BANTAY_AUTH0_CLIENT_ID && !process.env.BANTAY_AUTH0_CLIENT_ID) {
+        process.env.BANTAY_AUTH0_CLIENT_ID = secrets.BANTAY_AUTH0_CLIENT_ID;
+      }
+      if (secrets.BANTAY_AUTH0_DOMAIN && !process.env.BANTAY_AUTH0_DOMAIN) {
+        process.env.BANTAY_AUTH0_DOMAIN = secrets.BANTAY_AUTH0_DOMAIN;
+      }
+      if (secrets.BANTAY_LLM_BASE_URL && !process.env.BANTAY_LLM_BASE_URL) {
+        process.env.BANTAY_LLM_BASE_URL = secrets.BANTAY_LLM_BASE_URL;
+      }
+      if (secrets.BANTAY_LLM_MODEL && !process.env.BANTAY_LLM_MODEL) {
+        process.env.BANTAY_LLM_MODEL = secrets.BANTAY_LLM_MODEL;
+      }
+      if (secrets.BANTAY_NTFY_URL && !process.env.BANTAY_NTFY_URL) {
+        process.env.BANTAY_NTFY_URL = secrets.BANTAY_NTFY_URL;
+      }
+      if (secrets.BANTAY_NTFY_TOPIC && !process.env.BANTAY_NTFY_TOPIC) {
+        process.env.BANTAY_NTFY_TOPIC = secrets.BANTAY_NTFY_TOPIC;
+      }
+    } catch (e) {
+      if (!process.env.BANTAY_AUTH0_CLIENT_SECRET) {
+        console.error(chalk.red("❌ Not logged in. Run 'bantay login' first."));
+        console.error(
+          chalk.dim("   Tip: use `bantay scan --local` for offline demos without Auth0.")
+        );
+        process.exit(1);
+      }
     }
   }
 
@@ -191,6 +203,7 @@ export async function scanCommand(
       diff,
       approved: null,
       secrets,
+      local: localMode,
     });
 
     // Check for findings and assessment
@@ -208,6 +221,14 @@ export async function scanCommand(
       process.exit(0);
     } else if (result.approved === false) {
       console.log(chalk.red("❌ Push blocked by security policy. Remove secrets before pushing."));
+      process.exit(1);
+    } else if (localMode) {
+      // MEDIUM in local mode: no CIBA — fail closed for demos/CI
+      console.log(
+        chalk.red(
+          "❌ Push blocked (local mode). Medium risk requires Auth0 CIBA; run without --local after `bantay login`."
+        )
+      );
       process.exit(1);
     } else {
       // MEDIUM risk: Graph is interrupted
