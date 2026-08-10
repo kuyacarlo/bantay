@@ -28,6 +28,11 @@ vi.mock("@bantay/core", () => ({
     BANTAY_AUTH0_CLIENT_SECRET: "test-secret",
     BANTAY_AUTH0_USER_ID: "test-user",
   }),
+  getGitContext: vi.fn().mockReturnValue({
+    isRepo: true,
+    hasCommits: true,
+    isInitialCommit: false,
+  }),
 }));
 
 describe("scanCommand", () => {
@@ -63,5 +68,17 @@ describe("scanCommand", () => {
     await scanCommand();
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("No changes to scan"));
+  });
+
+  it("should skip Auth0 when --local is set", async () => {
+    const { loadSecrets } = await import("@bantay/core");
+    vi.mocked(execSync).mockReturnValue(Buffer.from("diff content") as any);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    vi.stubEnv("BANTAY_AUTH0_CLIENT_SECRET", "");
+
+    await scanCommand({ local: true });
+
+    expect(loadSecrets).not.toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(0);
   });
 });

@@ -20,6 +20,10 @@ program
   .option("--pre-push", "Scan changes about to be pushed (handles stdin from git)")
   .option("--all-files", "Scan all files in the working tree")
   .option("--all", "Everything — all files AND all commits from the beginning")
+  .option(
+    "--local",
+    "Offline gate: regex/secretlint only (no Auth0, LLM, or CIBA). For demos and CI without credentials."
+  )
   .action(async (options) => {
     try {
       await scanCommand(options);

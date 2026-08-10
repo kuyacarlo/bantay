@@ -5,5 +5,6 @@ export * from "./services/ntfy";
 export * from "./services/github";
 export * from "./services/secrets";
 export * from "./graph/index";
+export * from "./graph/nodes/score";
 export * from "./types/schemas";
 export * from "./utils/git";
