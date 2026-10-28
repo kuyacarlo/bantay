@@ -28,6 +28,11 @@ vi.mock("@bantay/core", () => ({
     BANTAY_AUTH0_CLIENT_SECRET: "test-secret",
     BANTAY_AUTH0_USER_ID: "test-user",
   }),
+  getGitContext: vi.fn().mockReturnValue({
+    isRepo: true,
+    hasCommits: true,
+    isInitialCommit: false,
+  }),
 }));
 
 describe("scanCommand", () => {

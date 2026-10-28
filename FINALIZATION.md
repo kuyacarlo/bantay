@@ -22,7 +22,7 @@ pnpm run -r --if-present typecheck
 pnpm run -r --if-present format:check
 ```
 
-Note on CLI unit tests: `pnpm --filter @bantay/cli test` currently fails on `scan.test.ts` because the test double for `@bantay/core` omits `getGitContext` exported by core. `@bantay/core` unit tests pass completely (8 test files, 44 tests passing). Per finalization policy, this pre-existing unit test gap is recorded rather than patched without authorization.
+Update: the `scan.test.ts` mock gap is fixed — `@bantay/core` mock now includes a `getGitContext` stub, so `pnpm --filter @bantay/cli test` passes (3/3). Full repo: `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm test` (47/47 across both packages), `pnpm run -r --if-present lint`, `typecheck`, and `format:check` all pass clean on Node 22 / pnpm 10.
 
 ## Remaining decision gates
 
